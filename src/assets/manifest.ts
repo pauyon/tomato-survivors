@@ -47,8 +47,11 @@ export const SPRITE_ANIMS: Record<string, SpriteAnimDef> = {
   'player.walk':       { frameW: 32, frameH: 32, frames: 4, fps: 8,  loop: true  },
   'player.idle':       { frameW: 32, frameH: 32, frames: 2, fps: 4,  loop: true  },
   'player.hurt':       { frameW: 32, frameH: 32, frames: 2, fps: 12, loop: false },
-  'enemy.rotSpore':    { frameW: 24, frameH: 24, frames: 3, fps: 6,  loop: true  },
-  'enemy.aphid':       { frameW: 16, frameH: 16, frames: 2, fps: 8,  loop: true  },
-  'enemy.caterpillar': { frameW: 32, frameH: 16, frames: 4, fps: 6,  loop: true  },
-  'enemy.beetle':      { frameW: 28, frameH: 24, frames: 2, fps: 4,  loop: true  },
+  // Pixel-art horizontal strips of 4 frames. The enemy renderer
+  // (EnemySpriteRenderer.ts) derives frame geometry from the loaded image; these
+  // are the per-frame pixel sizes for reference.
+  'enemy.rotSpore':    { frameW: 32, frameH: 32, frames: 4, fps: 6, loop: true },
+  'enemy.aphid':       { frameW: 24, frameH: 24, frames: 4, fps: 9, loop: true },
+  'enemy.caterpillar': { frameW: 48, frameH: 24, frames: 4, fps: 6, loop: true },
+  'enemy.beetle':      { frameW: 40, frameH: 32, frames: 4, fps: 5, loop: true },
 };

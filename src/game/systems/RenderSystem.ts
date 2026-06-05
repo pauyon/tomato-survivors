@@ -2,6 +2,7 @@ import type { Camera } from '../../engine/Camera';
 import type { World } from '../World';
 import { getCharacterSprite } from '../../assets/placeholders/CharacterSprites';
 import { drawRotSpore, drawAphid, drawCaterpillar, drawBeetle } from '../../assets/placeholders/EnemySprites';
+import { drawEnemySprite } from '../../assets/EnemySpriteRenderer';
 import { drawSeedProjectile, drawXPGem, drawGoldCoin, drawHeart, drawTreasureChest, drawObstacle, drawVineWhipSprite, drawCompostExplosion } from '../../assets/placeholders/EffectSprites';
 import fieldTexture from '../../assets/field.png';
 import type { SprayEffect } from '../weapons/PesticideSpray';
@@ -76,11 +77,14 @@ export class RenderSystem {
         ctx.filter = `brightness(300%) saturate(0%)`;
       }
 
-      switch (enemy.type) {
-        case 'rotSpore':    drawRotSpore(ctx, pos.x, pos.y, enemy.animTime);    break;
-        case 'aphid':       drawAphid(ctx, pos.x, pos.y, enemy.animTime);       break;
-        case 'caterpillar': drawCaterpillar(ctx, pos.x, pos.y, enemy.animTime); break;
-        case 'beetle':      drawBeetle(ctx, pos.x, pos.y, enemy.animTime);      break;
+      // Use the real sprite sheet if loaded; otherwise fall back to the placeholder.
+      if (!drawEnemySprite(ctx, enemy.type, pos.x, pos.y, enemy.animTime, enemy.vx)) {
+        switch (enemy.type) {
+          case 'rotSpore':    drawRotSpore(ctx, pos.x, pos.y, enemy.animTime);    break;
+          case 'aphid':       drawAphid(ctx, pos.x, pos.y, enemy.animTime);       break;
+          case 'caterpillar': drawCaterpillar(ctx, pos.x, pos.y, enemy.animTime); break;
+          case 'beetle':      drawBeetle(ctx, pos.x, pos.y, enemy.animTime);      break;
+        }
       }
       ctx.restore();
 
