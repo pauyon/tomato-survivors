@@ -151,7 +151,7 @@ export class RenderSystem {
     // The texture is downscaled once into an offscreen canvas so its features
     // read smaller next to the character (and so tiling stays crisp/stable).
     if (!this.fieldPattern && this.fieldImg.complete && this.fieldImg.naturalWidth > 0) {
-      const FIELD_SCALE = 0.5; // <1 = smaller grass features relative to the world
+      const FIELD_SCALE = 0.3; // <1 = smaller grass features relative to the world
       const sw = Math.round(this.fieldImg.naturalWidth * FIELD_SCALE);
       const sh = Math.round(this.fieldImg.naturalHeight * FIELD_SCALE);
       const c = document.createElement('canvas');
