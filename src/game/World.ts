@@ -36,7 +36,7 @@ export interface WorldConfig {
 
 const RUN_DURATION = 30 * 60; // 30 minutes in seconds
 const HEALTH_DROP_CHANCE = 0.04; // per enemy kill
-const BASE_CHEST_CHANCE = 0.006; // per enemy kill, before Lucky Clover
+const BASE_CHEST_CHANCE = 0.018; // per enemy kill, before Lucky Clover
 
 export class World {
   player: Player;
