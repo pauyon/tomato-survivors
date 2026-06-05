@@ -126,6 +126,12 @@ export class Game {
   }
 
   private update(dt: number): void {
+    // Escape toggles pause — handled before the early-return so it also works
+    // while paused. Edge-detected so one key press = one toggle.
+    if (input.consumePress('escape')) {
+      this.togglePause();
+    }
+
     if (this.state !== 'running') return;
 
     const move = input.getMovement();
@@ -136,11 +142,6 @@ export class Game {
     if (this.statsTimer >= 0.1) {
       this.statsTimer = 0;
       this.emitStats();
-    }
-
-    // Escape key → pause
-    if (input.isDown('escape')) {
-      this.togglePause();
     }
 
     if (!this.world.player.alive) {

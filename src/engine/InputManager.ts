@@ -3,6 +3,7 @@
 
 class InputManager {
   private keys = new Set<string>();
+  private justPressed = new Set<string>();
   private bound = false;
 
   bind(): void {
@@ -23,10 +24,14 @@ class InputManager {
     window.removeEventListener('keyup', this.onKeyUp);
     this.bound = false;
     this.keys.clear();
+    this.justPressed.clear();
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    this.keys.add(e.key.toLowerCase());
+    const k = e.key.toLowerCase();
+    // Only register an edge on the first keydown, not on auto-repeat while held.
+    if (!this.keys.has(k)) this.justPressed.add(k);
+    this.keys.add(k);
   };
 
   private onKeyUp = (e: KeyboardEvent): void => {
@@ -35,6 +40,16 @@ class InputManager {
 
   isDown(key: string): boolean {
     return this.keys.has(key.toLowerCase());
+  }
+
+  /** Returns true once per physical key press, then clears the edge. */
+  consumePress(key: string): boolean {
+    const k = key.toLowerCase();
+    if (this.justPressed.has(k)) {
+      this.justPressed.delete(k);
+      return true;
+    }
+    return false;
   }
 
   get moveX(): number {
