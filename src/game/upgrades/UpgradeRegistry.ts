@@ -14,71 +14,138 @@ export interface Upgrade {
   apply: (player: Player, weapons: Weapon[]) => void;
 }
 
+/** How many times a passive can be taken before it drops out of the pool (VS-style). */
+export const PASSIVE_MAX_LEVEL = 5;
+
+interface PassiveDef {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  /** Per-pick stat effect (called once each time the passive is chosen). */
+  effect: (player: Player) => void;
+  /** Optional override for the per-passive cap. Defaults to PASSIVE_MAX_LEVEL. */
+  maxLevel?: number;
+}
+
 /** A treasure-chest reward: some gold plus one random upgrade (chosen like a level-up). */
 export interface ChestReward {
   gold: number;
   upgrade: Upgrade;
 }
 
-export const PASSIVE_UPGRADES: Upgrade[] = [
+const PASSIVE_DEFS: PassiveDef[] = [
   {
     id: 'hp_up',
-    type: 'passive',
     name: 'Vitamin C Boost',
     description: '+20% max HP. Also restores 20 HP.',
     icon: '❤️',
-    apply: (player) => {
+    effect: (player) => {
       player.stats.maxHp = Math.round(player.stats.maxHp * 1.2);
       player.heal(20);
     },
   },
   {
     id: 'speed_up',
-    type: 'passive',
     name: 'Sugar Rush',
     description: '+12% move speed.',
     icon: '👟',
-    apply: (player) => { player.stats.speed *= 1.12; },
+    effect: (player) => { player.stats.speed *= 1.12; },
   },
   {
     id: 'damage_up',
-    type: 'passive',
     name: 'Bitter Taste',
     description: '+15% damage to all weapons.',
     icon: '💪',
-    apply: (player) => { player.stats.damageMultiplier *= 1.15; },
+    effect: (player) => { player.stats.damageMultiplier *= 1.15; },
   },
   {
     id: 'xp_up',
-    type: 'passive',
     name: 'Photosynthesis',
     description: '+20% XP gained.',
     icon: '⭐',
-    apply: (player) => { player.stats.xpMultiplier *= 1.2; },
+    effect: (player) => { player.stats.xpMultiplier *= 1.2; },
   },
   {
     id: 'magnet_up',
-    type: 'passive',
     name: 'Magnetic Vines',
     description: '+40 XP magnet radius.',
     icon: '🧲',
-    apply: (player) => { player.stats.magnetRadius += 40; },
+    effect: (player) => { player.stats.magnetRadius += 40; },
   },
   {
     id: 'armor_up',
-    type: 'passive',
     name: 'Tough Skin',
     description: '+3 armor (flat damage reduction).',
     icon: '🛡️',
-    apply: (player) => { player.stats.armor += 3; },
+    effect: (player) => { player.stats.armor += 3; },
   },
   {
     id: 'gold_up',
-    type: 'passive',
     name: 'Golden Harvest',
     description: '+20% gold drops.',
     icon: '💰',
-    apply: (player) => { player.stats.goldMultiplier *= 1.2; },
+    effect: (player) => { player.stats.goldMultiplier *= 1.2; },
+  },
+];
+
+/** id → display info + cap for passives the player holds (used by the HUD inventory). */
+export const PASSIVE_INFO: Record<string, { name: string; icon: string; maxLevel: number }> =
+  Object.fromEntries(PASSIVE_DEFS.map(d => [d.id, { name: d.name, icon: d.icon, maxLevel: d.maxLevel ?? PASSIVE_MAX_LEVEL }]));
+
+const passiveMaxLevel = (def: PassiveDef): number => def.maxLevel ?? PASSIVE_MAX_LEVEL;
+
+/** Current level of a passive (0 if never taken). */
+function passiveLevel(player: Player, id: string): number {
+  return player.passiveLevels[id] ?? 0;
+}
+
+/** Build a level-up card for a passive, tagging the running X/max level and
+ *  recording the pick so the passive eventually caps out. */
+function passiveUpgrade(def: PassiveDef, player: Player): Upgrade {
+  const next = passiveLevel(player, def.id) + 1;
+  return {
+    id: def.id,
+    type: 'passive',
+    name: def.name,
+    description: `${def.description}  (Lv ${next}/${passiveMaxLevel(def)})`,
+    icon: def.icon,
+    apply: (p) => {
+      def.effect(p);
+      p.passiveLevels[def.id] = passiveLevel(p, def.id) + 1;
+    },
+  };
+}
+
+/**
+ * Filler rewards shown only once the real pool (weapons + un-capped passives) can't
+ * fill three cards. Mirrors Vampire Survivors handing out chicken / coins when every
+ * item is maxed, so a level-up is never a dead card.
+ */
+const FALLBACK_UPGRADES: Upgrade[] = [
+  {
+    id: 'fallback_chicken',
+    type: 'passive',
+    name: 'Roast Chicken',
+    description: 'Restores 30% of max HP.',
+    icon: '🍗',
+    apply: (player) => { player.heal(Math.round(player.stats.maxHp * 0.3)); },
+  },
+  {
+    id: 'fallback_gold',
+    type: 'passive',
+    name: 'Coin Pouch',
+    description: '+30 gold.',
+    icon: '💰',
+    apply: (player) => { player.addGold(30); },
+  },
+  {
+    id: 'fallback_gold_big',
+    type: 'passive',
+    name: 'Coin Sack',
+    description: '+60 gold.',
+    icon: '🪙',
+    apply: (player) => { player.addGold(60); },
   },
 ];
 
@@ -87,7 +154,7 @@ export const PASSIVE_UPGRADES: Upgrade[] = [
  * `_unlockedWeaponIds` is retained for call-site compatibility but no longer gates the
  * in-run pool: any character can pick up and run any weapon alongside its starter.
  */
-export function buildLevelUpOptions(_player: Player, weapons: Weapon[], _unlockedWeaponIds: string[]): Upgrade[] {
+export function buildLevelUpOptions(player: Player, weapons: Weapon[], _unlockedWeaponIds: string[]): Upgrade[] {
   const options: Upgrade[] = [];
 
   // 1. Weapon level-ups (existing weapons)
@@ -139,11 +206,26 @@ export function buildLevelUpOptions(_player: Player, weapons: Weapon[], _unlocke
     }
   }
 
-  // 4. Passive upgrades (always available, but shuffle them)
-  const shuffledPassives = [...PASSIVE_UPGRADES].sort(() => Math.random() - 0.5);
-  options.push(...shuffledPassives);
+  // 4. Passive upgrades — only those that haven't hit their cap. Once a passive is
+  //    maxed it drops out of the pool, so stats can't compound forever.
+  for (const def of PASSIVE_DEFS) {
+    if (passiveLevel(player, def.id) < passiveMaxLevel(def)) {
+      options.push(passiveUpgrade(def, player));
+    }
+  }
 
-  // Shuffle all and return 3
-  const shuffled = options.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 3);
+  // Shuffle the real pool and take up to 3 unique offers.
+  const shuffled = options.sort(() => Math.random() - 0.5).slice(0, 3);
+
+  // Pad to 3 with fallback rewards (chicken / coins) when everything else is maxed,
+  // so a level-up is never an empty screen.
+  if (shuffled.length < 3) {
+    const fillers = [...FALLBACK_UPGRADES].sort(() => Math.random() - 0.5);
+    let i = 0;
+    while (shuffled.length < 3) {
+      shuffled.push(fillers[i % fillers.length]);
+      i++;
+    }
+  }
+  return shuffled;
 }

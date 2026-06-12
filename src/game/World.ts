@@ -35,8 +35,15 @@ export interface WorldConfig {
 }
 
 const RUN_DURATION = 30 * 60; // 30 minutes in seconds
-const HEALTH_DROP_CHANCE = 0.04; // per enemy kill
-const BASE_CHEST_CHANCE = 0.018; // per enemy kill, before Lucky Clover
+
+// Loot is rate-limited rather than rolled flat per kill, so late-game kill volume
+// (hundreds/min) doesn't flood the field. Vampire-Survivors-style: chests come mostly
+// from elites, and both drop types respect a cooldown so they stay special.
+const HEALTH_DROP_CHANCE = 0.02;   // per eligible kill, gated by HEALTH_DROP_COOLDOWN
+const HEALTH_DROP_COOLDOWN = 10;   // min seconds between heart drops
+const BASE_CHEST_CHANCE = 0.01;    // normal kill, before Lucky Clover, gated by cooldown
+const ELITE_CHEST_CHANCE = 0.6;    // elite kill, before Lucky Clover, gated by cooldown
+const CHEST_COOLDOWN = 30;         // min seconds between chest drops
 
 export class World {
   player: Player;
@@ -63,6 +70,10 @@ export class World {
   elapsed = 0;       // seconds into the run
   score = 0;
   killCount = 0;
+
+  // Loot rate-limiters (count down in update); drops are gated on these reaching 0.
+  private chestCooldown = 0;
+  private healthCooldown = 0;
 
   private wave = new WaveSystem();
   private collision = new CollisionSystem();
@@ -93,6 +104,8 @@ export class World {
     if (!this.player.alive) return;
 
     this.elapsed += dt;
+    if (this.chestCooldown > 0) this.chestCooldown -= dt;
+    if (this.healthCooldown > 0) this.healthCooldown -= dt;
 
     // Player movement
     this.player.update(dt, moveX, moveY);
@@ -258,14 +271,21 @@ export class World {
     // Lifesteal on kill
     if (this.player.stats.lifesteal > 0) this.player.heal(this.player.stats.lifesteal);
 
-    // Health drop (uncommon)
-    if (Math.random() < HEALTH_DROP_CHANCE) {
+    // Health drop (uncommon, cooldown-gated and only when the player is hurt)
+    if (this.healthCooldown <= 0 && this.player.hp < this.player.stats.maxHp
+        && Math.random() < HEALTH_DROP_CHANCE) {
       this.healthDrops.push(new HealthDrop(enemy.x, enemy.y, 15 + Math.round(enemy.maxHp / 12)));
+      this.healthCooldown = HEALTH_DROP_COOLDOWN;
     }
 
-    // Treasure chest (rare, boosted by Lucky Clover)
-    if (Math.random() < BASE_CHEST_CHANCE + this.player.stats.chestLuck) {
-      this.chests.push(new TreasureChest(enemy.x, enemy.y));
+    // Treasure chest — mostly from elites, rate-limited so kill volume can't flood
+    // the field. Lucky Clover (chestLuck) adds on top.
+    if (this.chestCooldown <= 0) {
+      const chance = (enemy.isElite ? ELITE_CHEST_CHANCE : BASE_CHEST_CHANCE) + this.player.stats.chestLuck;
+      if (Math.random() < chance) {
+        this.chests.push(new TreasureChest(enemy.x, enemy.y));
+        this.chestCooldown = CHEST_COOLDOWN;
+      }
     }
 
     // XP drops

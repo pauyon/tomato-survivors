@@ -46,6 +46,7 @@ export class WaveSystem {
     const enemy = new Enemy(x, y, def);
     if (isElite) {
       // Elites are bigger and have a subtle color tint (handled in render)
+      enemy.isElite = true;
       enemy.radius *= 1.3;
     }
     return enemy;

@@ -34,6 +34,9 @@ export class Enemy extends Entity {
   // Flash on hit
   hitFlash = 0;
 
+  // Elite enemies are tougher and are the main source of treasure chests.
+  isElite = false;
+
   // Knockback impulse — applied on top of AI velocity, decays each frame.
   // Kept separate so the AI's per-frame vx/vy assignment doesn't clobber it.
   kbX = 0;

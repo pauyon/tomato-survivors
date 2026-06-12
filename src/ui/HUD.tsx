@@ -12,43 +12,51 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// Crisp pixel-style outline used on the big readouts (Vampire-Survivors look).
+const OUTLINE = '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 3px 0 #000';
+
 export function HUD({ stats, isPaused, onTogglePause }: HUDProps) {
-  const xpPct = Math.max(0, (stats.xp / stats.xpToNext) * 100);
+  const xpPct = Math.max(0, Math.min(100, (stats.xp / stats.xpToNext) * 100));
 
   return (
     <div style={styles.container}>
-      {/* Top bar — HP now lives under the player; show a compact HP readout + timer + stats */}
-      <div style={styles.topBar}>
-        <div style={styles.hpReadout}>❤️ {stats.hp}/{stats.maxHp}</div>
-
-        {/* Timer (center) */}
-        <div style={styles.timer}>{formatTime(stats.elapsed)}</div>
-
-        {/* Gold + kills (right) */}
-        <div style={styles.statsRight}>
-          <span>💰 {stats.gold}</span>
-          <span style={{ marginLeft: 12 }}>💀 {stats.kills}</span>
-          <button style={styles.pauseBtn} onClick={onTogglePause}>{isPaused ? '▶' : '⏸'}</button>
-        </div>
+      {/* Full-width XP bar pinned to the very top — the signature VS element. */}
+      <div style={styles.xpBar}>
+        <div style={{ ...styles.xpFill, width: `${xpPct}%` }} />
+        <div style={styles.lvBadge}>LV {stats.level}</div>
+        <div style={styles.xpText}>{stats.xp} / {stats.xpToNext}</div>
       </div>
 
-      {/* XP bar (below top bar) */}
-      <div style={styles.xpRow}>
-        <div style={styles.xpLabel}>Lv.{stats.level}</div>
-        <div style={styles.xpBarTrack}>
-          <div style={{ ...styles.xpBarFill, width: `${xpPct}%` }} />
-        </div>
-        <div style={styles.xpLabel}>{stats.xp}/{stats.xpToNext}</div>
+      {/* Big centered timer. */}
+      <div style={styles.timer}>{formatTime(stats.elapsed)}</div>
+
+      {/* Counters (top-right). */}
+      <div style={styles.counters}>
+        <div style={styles.counter}><span>💰</span><span style={styles.counterNum}>{stats.gold}</span></div>
+        <div style={styles.counter}><span>💀</span><span style={styles.counterNum}>{stats.kills}</span></div>
+        <button style={styles.pauseBtn} onClick={onTogglePause}>{isPaused ? '▶' : 'II'}</button>
       </div>
 
-      {/* Weapon slots (bottom-left) */}
-      <div style={styles.weaponSlots}>
-        {stats.weapons.map((w) => (
-          <div key={w.name} style={styles.weaponSlot} title={`${w.name} Lv.${w.level}${w.stacks > 1 ? ` ×${w.stacks}` : ''}`}>
-            <div style={styles.weaponIcon}>{w.icon}</div>
-            <div style={styles.weaponLevel}>Lv.{w.level}{w.stacks > 1 ? ` ×${w.stacks}` : ''}</div>
+      {/* Inventory — weapons on top, passives below, as framed square slots (top-left, VS-style). */}
+      <div style={styles.inventory}>
+        <div style={styles.invRow}>
+          {stats.weapons.map((w) => (
+            <div key={w.name} style={styles.slot} title={`${w.name} Lv.${w.level}${w.stacks > 1 ? ` ×${w.stacks}` : ''}`}>
+              <div style={styles.slotIcon}>{w.icon}</div>
+              <div style={styles.slotBadge}>{w.stacks > 1 ? `×${w.stacks}` : w.level}</div>
+            </div>
+          ))}
+        </div>
+        {stats.passives.length > 0 && (
+          <div style={styles.invRow}>
+            {stats.passives.map((p) => (
+              <div key={p.name} style={{ ...styles.slot, ...styles.slotPassive }} title={`${p.name} (${p.level}/${p.maxLevel})`}>
+                <div style={styles.slotIcon}>{p.icon}</div>
+                <div style={styles.slotBadge}>{p.level}</div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -61,20 +69,76 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: '"Courier New", monospace',
     userSelect: 'none',
   },
-  topBar: {
-    position: 'absolute', top: 10, left: 10, right: 10,
-    display: 'flex', alignItems: 'center', gap: 12,
+
+  // --- XP bar (full width, top edge) ---
+  xpBar: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 20,
+    background: 'rgba(8,12,24,0.85)',
+    borderBottom: '2px solid #000',
+    overflow: 'hidden',
   },
-  hpReadout: { flex: 1, color: '#ff9aa2', fontSize: 14, fontWeight: 'bold', textShadow: '1px 1px 3px #000' },
-  timer: { flex: 0, color: '#fff', fontSize: 22, fontWeight: 'bold', textShadow: '2px 2px 4px #000', minWidth: 80, textAlign: 'center' },
-  statsRight: { flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', color: '#ffe878', fontSize: 14, fontWeight: 'bold', textShadow: '1px 1px 3px #000', pointerEvents: 'auto' },
-  pauseBtn: { marginLeft: 14, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 16, padding: '2px 10px', pointerEvents: 'auto' },
-  xpRow: { position: 'absolute', top: 50, left: 10, right: 10, display: 'flex', alignItems: 'center', gap: 6 },
-  xpLabel: { color: '#a0e8ff', fontSize: 11, textShadow: '1px 1px 2px #000', minWidth: 36 },
-  xpBarTrack: { flex: 1, height: 8, background: 'rgba(0,0,0,0.5)', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(100,200,255,0.3)' },
-  xpBarFill: { height: '100%', background: 'linear-gradient(90deg, #30b8e0, #60f0ff)', borderRadius: 4, transition: 'width 0.15s' },
-  weaponSlots: { position: 'absolute', bottom: 16, left: 16, display: 'flex', gap: 8, pointerEvents: 'none' },
-  weaponSlot: { background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '4px 8px', textAlign: 'center', minWidth: 44 },
-  weaponIcon: { fontSize: 20 },
-  weaponLevel: { color: '#ffe878', fontSize: 10, fontWeight: 'bold' },
+  xpFill: {
+    position: 'absolute', inset: 0,
+    background: 'linear-gradient(180deg, #7fe3ff 0%, #29a3e0 55%, #1c7fc4 100%)',
+    boxShadow: 'inset 0 -3px 0 rgba(0,0,0,0.25)',
+    transition: 'width 0.15s',
+  },
+  lvBadge: {
+    position: 'absolute', left: 8, top: 0, bottom: 0,
+    display: 'flex', alignItems: 'center',
+    color: '#fff', fontSize: 13, fontWeight: 'bold', letterSpacing: 1,
+    textShadow: OUTLINE,
+  },
+  xpText: {
+    position: 'absolute', right: 10, top: 0, bottom: 0,
+    display: 'flex', alignItems: 'center',
+    color: '#e8f6ff', fontSize: 11, fontWeight: 'bold',
+    textShadow: '1px 1px 0 #000',
+  },
+
+  // --- Timer (centered, big) ---
+  timer: {
+    position: 'absolute', top: 28, left: '50%', transform: 'translateX(-50%)',
+    color: '#fff', fontSize: 34, fontWeight: 'bold', letterSpacing: 2,
+    textShadow: OUTLINE,
+  },
+
+  // --- Counters (top-right) ---
+  counters: {
+    position: 'absolute', top: 30, right: 12,
+    display: 'flex', alignItems: 'center', gap: 8,
+  },
+  counter: {
+    display: 'flex', alignItems: 'center', gap: 5,
+    background: 'rgba(8,12,24,0.8)', border: '2px solid #000', borderRadius: 6,
+    padding: '3px 9px', fontSize: 15,
+  },
+  counterNum: { color: '#ffe878', fontSize: 14, fontWeight: 'bold', textShadow: '1px 1px 0 #000', minWidth: 16, textAlign: 'right' },
+  pauseBtn: {
+    pointerEvents: 'auto',
+    background: 'rgba(8,12,24,0.8)', border: '2px solid #000', borderRadius: 6,
+    color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 'bold',
+    padding: '4px 10px', letterSpacing: 1, fontFamily: '"Courier New", monospace',
+  },
+
+  // --- Inventory (top-left, below the XP bar — VS placement) ---
+  inventory: {
+    position: 'absolute', top: 26, left: 10,
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5,
+  },
+  invRow: { display: 'flex', gap: 5, justifyContent: 'flex-start' },
+  slot: {
+    position: 'relative', width: 38, height: 38,
+    background: 'rgba(8,12,24,0.78)', border: '2px solid #caa030', borderRadius: 6,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: 'inset 0 0 6px rgba(0,0,0,0.6)',
+  },
+  slotPassive: { border: '2px solid #5a8a3a' },
+  slotIcon: { fontSize: 22, lineHeight: 1 },
+  slotBadge: {
+    position: 'absolute', right: -3, bottom: -5,
+    background: '#1a1408', border: '1px solid #caa030', borderRadius: 4,
+    color: '#ffe878', fontSize: 9, fontWeight: 'bold', padding: '0 3px',
+    minWidth: 12, textAlign: 'center',
+  },
 };

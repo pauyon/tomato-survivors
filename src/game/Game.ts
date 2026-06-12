@@ -7,7 +7,7 @@ import { input } from '../engine/InputManager';
 import { World } from './World';
 import { RenderSystem } from './systems/RenderSystem';
 import type { PlayerStats } from './entities/Player';
-import { buildLevelUpOptions, type Upgrade, type ChestReward } from './upgrades/UpgradeRegistry';
+import { buildLevelUpOptions, PASSIVE_INFO, type Upgrade, type ChestReward } from './upgrades/UpgradeRegistry';
 
 export type GameState = 'running' | 'paused' | 'levelup' | 'chest' | 'gameover' | 'victory';
 
@@ -37,6 +37,7 @@ export interface LiveStats {
   gold: number;
   kills: number;
   weapons: { name: string; icon: string; level: number; stacks: number }[];
+  passives: { name: string; icon: string; level: number; maxLevel: number }[];
 }
 
 export class Game {
@@ -177,6 +178,9 @@ export class Game {
       gold: player.gold,
       kills: this.world.killCount,
       weapons: player.weapons.map(w => ({ name: w.name, icon: w.icon, level: w.level, stacks: w.stacks })),
+      passives: Object.entries(player.passiveLevels)
+        .filter(([id, lvl]) => lvl > 0 && PASSIVE_INFO[id])
+        .map(([id, level]) => ({ name: PASSIVE_INFO[id].name, icon: PASSIVE_INFO[id].icon, level, maxLevel: PASSIVE_INFO[id].maxLevel })),
     });
   }
 

@@ -61,6 +61,10 @@ export class Player extends Entity {
   // Weapons (max 6 slots)
   weapons: Weapon[] = [];
 
+  // How many times each passive upgrade has been taken (id → level).
+  // Passives cap out (VS-style) so stats can't compound forever.
+  passiveLevels: Record<string, number> = {};
+
   // Kill count for this run
   kills = 0;
 

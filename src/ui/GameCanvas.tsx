@@ -27,7 +27,7 @@ interface UIState {
 
 const DEFAULT_STATS: LiveStats = {
   hp: 100, maxHp: 100, xp: 0, xpToNext: 10, level: 1,
-  elapsed: 0, gold: 0, kills: 0, weapons: [],
+  elapsed: 0, gold: 0, kills: 0, weapons: [], passives: [],
 };
 
 export function GameCanvas({ playerStats, unlockedWeaponIds, startingWeaponId, characterId, onRunEnd, onMainMenu }: GameCanvasProps) {
