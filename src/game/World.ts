@@ -17,6 +17,8 @@ import type { VineWhipEffect } from './weapons/VineWhip';
 import type { SprayEffect } from './weapons/PesticideSpray';
 import type { OrbitalPosition } from './weapons/WateringOrb';
 import type { WhackEffect } from './weapons/WeedWhacker';
+import type { BoltEffect } from './weapons/NightshadeBolt';
+import type { AuraEffect } from './weapons/MarinaraAura';
 import type { Camera } from '../engine/Camera';
 
 export interface DamageNumber {
@@ -25,6 +27,14 @@ export interface DamageNumber {
   isCrit: boolean;
   spawnTime: number;
   lifetime: number;
+}
+
+/** A short-lived AoE detonation that plays an explosion sprite animation. */
+export interface BlastEffect {
+  x: number; y: number;
+  radius: number;
+  life: number; // 1 → 0
+  kind: 'compost' | 'fertilizer';
 }
 
 export interface WorldConfig {
@@ -64,6 +74,9 @@ export class World {
   sprayEffects: SprayEffect[] = [];
   whackEffects: WhackEffect[] = [];
   orbitalPositions: OrbitalPosition[] = []; // updated by WateringOrb every tick
+  boltEffects: BoltEffect[] = [];           // lightning flashes from NightshadeBolt
+  auraEffects: AuraEffect[] = [];           // updated by MarinaraAura every tick
+  blastEffects: BlastEffect[] = [];         // AoE detonation animations (compost / fertilizer)
 
   particles = new ParticleSystem();
 
@@ -128,6 +141,7 @@ export class World {
     // Projectile movement
     for (const proj of this.projectiles) {
       if (!proj.alive) continue;
+      if (proj.homing) this.steerHoming(proj, dt);
       proj.update(dt);
       // AoE projectiles explode when they expire
       if (!proj.alive && proj.isAoe) this.explodeAoe(proj);
@@ -166,6 +180,10 @@ export class World {
     this.sprayEffects = this.sprayEffects.filter(s => s.life > 0);
     for (const w of this.whackEffects) w.life -= dt * 5;
     this.whackEffects = this.whackEffects.filter(w => w.life > 0);
+    for (const b of this.boltEffects) b.life -= dt * 3.5; // ~0.29s flash
+    this.boltEffects = this.boltEffects.filter(b => b.life > 0);
+    for (const bl of this.blastEffects) bl.life -= dt * 2.6; // ~0.38s blast
+    this.blastEffects = this.blastEffects.filter(bl => bl.life > 0);
 
     // Revive VFX (fired once on the frame Second Wind triggers)
     if (this.player.justRevived) {
@@ -243,6 +261,29 @@ export class World {
     this.chests     = this.chests.filter(c => c.alive);
   }
 
+  /** Curve a homing projectile toward the nearest enemy within its seek range. */
+  private steerHoming(proj: Projectile, dt: number): void {
+    let nearest: Enemy | null = null;
+    let bestDistSq = proj.homingRange * proj.homingRange;
+    for (const enemy of this.enemies) {
+      if (!enemy.alive || proj.piercedIds.has(enemy.id)) continue; // seek fresh targets
+      const dx = enemy.x - proj.x;
+      const dy = enemy.y - proj.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestDistSq) { bestDistSq = d2; nearest = enemy; }
+    }
+    if (!nearest) return;
+
+    const desired = Math.atan2(nearest.y - proj.y, nearest.x - proj.x);
+    let diff = desired - proj.angle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const maxTurn = proj.homingTurnRate * dt;
+    proj.angle += Math.max(-maxTurn, Math.min(maxTurn, diff));
+    proj.vx = Math.cos(proj.angle) * proj.speed;
+    proj.vy = Math.sin(proj.angle) * proj.speed;
+  }
+
   private explodeAoe(proj: Projectile): void {
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
@@ -262,6 +303,10 @@ export class World {
       }
     }
     this.particles.spawnDeath(proj.x, proj.y, 120, 80, 30, 15);
+    this.blastEffects.push({
+      x: proj.x, y: proj.y, radius: proj.aoeRadius, life: 1,
+      kind: proj.type === 'fertPot' ? 'fertilizer' : 'compost',
+    });
   }
 
   onEnemyKilled(enemy: Enemy): void {

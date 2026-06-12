@@ -1,6 +1,6 @@
 import { Entity } from './Entity';
 
-export type ProjectileType = 'seed' | 'vineArc' | 'compostBlast' | 'pesticide' | 'axe' | 'fertPot' | 'knife';
+export type ProjectileType = 'seed' | 'vineArc' | 'compostBlast' | 'pesticide' | 'axe' | 'fertPot' | 'knife' | 'tomato';
 
 export class Projectile extends Entity {
   type: ProjectileType;
@@ -20,6 +20,12 @@ export class Projectile extends Entity {
   // Arc / gravity (axes, pots)
   gravity = 0;       // pixels/second² downward acceleration
   spinAngle = 0;     // visual rotation for axes
+
+  // Homing (tomato seekers): steer toward the nearest enemy each frame.
+  // Steering is applied by World (which has the enemy list) before update().
+  homing = false;
+  homingTurnRate = 0; // radians/second the projectile can curve
+  homingRange = 0;    // only seek enemies within this distance
 
   // Knockback force imparted to enemies on hit (set by the firing weapon)
   knockback = 0;

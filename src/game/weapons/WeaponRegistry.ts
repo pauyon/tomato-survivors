@@ -7,6 +7,9 @@ import { FertilizerPot }  from './FertilizerPot';
 import { WateringOrb }    from './WateringOrb';
 import { TomatoKnife }    from './TomatoKnife';
 import { WeedWhacker }    from './WeedWhacker';
+import { TomatoSeeker }   from './TomatoSeeker';
+import { NightshadeBolt } from './NightshadeBolt';
+import { MarinaraAura }   from './MarinaraAura';
 import type { Weapon }    from './Weapon';
 import type { Player }    from '../entities/Player';
 
@@ -19,7 +22,10 @@ export type WeaponId =
   | 'fertilizer_pot'
   | 'watering_orb'
   | 'tomato_knife'
-  | 'weed_whacker';
+  | 'weed_whacker'
+  | 'tomato_seeker'
+  | 'nightshade_bolt'
+  | 'marinara_aura';
 
 export function createWeapon(id: WeaponId): Weapon {
   switch (id) {
@@ -32,6 +38,9 @@ export function createWeapon(id: WeaponId): Weapon {
     case 'watering_orb':    return new WateringOrb();
     case 'tomato_knife':    return new TomatoKnife();
     case 'weed_whacker':    return new WeedWhacker();
+    case 'tomato_seeker':   return new TomatoSeeker();
+    case 'nightshade_bolt': return new NightshadeBolt();
+    case 'marinara_aura':   return new MarinaraAura();
   }
 }
 
@@ -57,4 +66,7 @@ export const WEAPON_META: Record<WeaponId, WeaponMeta> = {
   watering_orb:    { name: 'Watering Orb',    description: 'A magic water orb orbits you, damaging on contact.',   icon: '💧' },
   tomato_knife:    { name: 'Tomato Knife',    description: 'Hurls sharp tomato slices at the nearest enemy.',      icon: '🔪' },
   weed_whacker:    { name: 'Weed Whacker',    description: 'Swings a wide slash in your facing direction.',        icon: '🌀' },
+  tomato_seeker:   { name: 'Tomato Seeker',   description: 'Launches homing tomatoes that chase down enemies.',    icon: '🍅' },
+  nightshade_bolt: { name: 'Nightshade Bolt', description: 'Strikes random nearby enemies with lightning.',        icon: '⚡' },
+  marinara_aura:   { name: 'Marinara Aura',   description: 'A garlic-tomato cloud that damages nearby enemies.',    icon: '🧄' },
 };

@@ -56,34 +56,39 @@ export class VineWhip extends Weapon {
   private strike(world: World, player: Player, angle: number): void {
     const { count, area, damage } = this.config;
     const baseDamage = Math.round(damage * player.stats.damageMultiplier);
-    const coneHalf = Math.PI / 3 + (count - 1) * 0.12; // higher levels widen the arc
+    // The whip is a straight horizontal lash, so its hitbox is a RECTANGULAR BAND
+    // along the strike direction — not an angular cone. A cone fans out and misses
+    // enemies sitting just below the thin vine; a band reliably hits anything
+    // on/under the lash within reach.
+    const dirX = Math.cos(angle), dirY = Math.sin(angle);
+    const reach = area;
+    const halfThickness = 30 + (count - 1) * 6; // vertical reach of the band; grows per level
     const alreadyHit = new Set<number>();
 
     for (const enemy of world.enemies) {
       if (!enemy.alive || alreadyHit.has(enemy.id)) continue;
       const dx = enemy.x - player.x;
       const dy = enemy.y - player.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > area + enemy.radius) continue;
+      const along = dx * dirX + dy * dirY;            // distance out along the lash
+      const perp = Math.abs(dx * -dirY + dy * dirX);  // distance off the lash line
+      if (along < -enemy.radius) continue;            // behind the player
+      if (along > reach + enemy.radius) continue;     // past the tip
+      if (perp > halfThickness + enemy.radius) continue; // outside the band
 
-      const enemyAngle = Math.atan2(dy, dx);
-      let diff = Math.abs(enemyAngle - angle);
-      if (diff > Math.PI) diff = Math.PI * 2 - diff;
-      if (diff < coneHalf || dist < 30) {
-        const { amount, isCrit } = player.rollHit(baseDamage);
-        enemy.takeDamage(amount);
-        alreadyHit.add(enemy.id);
-        if (dist > 0) enemy.applyKnockback(dx / dist, dy / dist, this.knockback);
-        world.particles.spawnHit(enemy.x, enemy.y, isCrit ? 9 : 5);
-        if (isCrit && enemy.alive) world.spawnDamageNumber(enemy.x, enemy.y - enemy.radius, amount, true);
-        if (!enemy.alive) world.onEnemyKilled(enemy);
-      }
+      const { amount, isCrit } = player.rollHit(baseDamage);
+      enemy.takeDamage(amount);
+      alreadyHit.add(enemy.id);
+      const dist = Math.hypot(dx, dy) || 1;
+      enemy.applyKnockback(dx / dist, dy / dist, this.knockback);
+      world.particles.spawnHit(enemy.x, enemy.y, isCrit ? 9 : 5);
+      if (isCrit && enemy.alive) world.spawnDamageNumber(enemy.x, enemy.y - enemy.radius, amount, true);
+      if (!enemy.alive) world.onEnemyKilled(enemy);
     }
 
-    // Spawn the visual a little further out from the body (along the strike
-    // direction) so it reads as reaching out rather than from the center.
-    const OFFSET = 28;
-    const LIFT = 22; // raise to the character's torso/hand height (taller 2× sprite)
+    // Spawn the visual near the body so the sprite lines up with the hit band
+    // (which is centered on the player). Small lift keeps it at torso height.
+    const OFFSET = 10;
+    const LIFT = 10;
     world.vineWhipEffects.push({
       x: player.x + Math.cos(angle) * OFFSET,
       y: player.y - LIFT,

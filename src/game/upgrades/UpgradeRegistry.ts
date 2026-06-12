@@ -87,6 +87,36 @@ const PASSIVE_DEFS: PassiveDef[] = [
     icon: '💰',
     effect: (player) => { player.stats.goldMultiplier *= 1.2; },
   },
+  // --- "Projectile / utility" axes, à la Vampire Survivors passive items. These
+  //     are global modifiers kept distinct from per-weapon level damage. ---
+  {
+    id: 'amount_up',
+    name: 'Bountiful Harvest',
+    description: '+1 projectile to every weapon.',
+    icon: '🍅',
+    maxLevel: 2, // very strong: each level adds a projectile to ALL weapons
+    effect: (player) => {
+      player.stats.bonusProjectiles += 1;
+      for (const w of player.weapons) applyPerkToWeapon(w, player);
+    },
+  },
+  {
+    id: 'cooldown_up',
+    name: 'Quick Hands',
+    description: '-8% weapon cooldown (attack faster).',
+    icon: '⏱️',
+    effect: (player) => { player.stats.cooldownMult *= 0.92; },
+  },
+  {
+    id: 'area_up',
+    name: 'Sprawling Roots',
+    description: '+12% weapon area & blast size.',
+    icon: '🌾',
+    effect: (player) => {
+      player.stats.areaMult *= 1.12;
+      for (const w of player.weapons) applyPerkToWeapon(w, player);
+    },
+  },
 ];
 
 /** id → display info + cap for passives the player holds (used by the HUD inventory). */
